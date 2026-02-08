@@ -11,11 +11,11 @@
 #include "rv1106g-lubancat-screen-rgb.dtsi"
 
 //camara
-#include "rv1106g-lubancat-single-cam.dtsi"
+// #include "rv1106g-lubancat-single-cam.dtsi"
 // #include "rv1106g-lubancat-dual-cam.dtsi"
 
 / {
-    model = "LubanCat RV1106 IO Board";
+	model = "LubanCat RV1106 IO Board with IMX385";
 	compatible = "embedfire,rv1106g-lubancat-rv", "rockchip,rv1106";
 
 	chosen {
@@ -245,7 +245,56 @@
 		regulator-max-microvolt = <5000000>;
 		gpio = <&gpio3 RK_PC6 GPIO_ACTIVE_HIGH>;
 		vin-supply = <&vcc5v0_sys>;
-	};	
+	};
+
+	/* 摄像头各路电源调节器 */
+	cam_dovdd: cam-dovdd {
+		compatible = "regulator-fixed";
+		regulator-name = "cam_dovdd";
+		regulator-always-on;
+		regulator-boot-on;
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		vin-supply = <&vcc_cam1>;
+	};
+
+	cam_avdd: cam-avdd {
+		compatible = "regulator-fixed";
+		regulator-name = "cam_avdd";
+		regulator-always-on;
+		regulator-boot-on;
+		regulator-min-microvolt = <2800000>;
+		regulator-max-microvolt = <2800000>;
+		vin-supply = <&vcc_cam1>;
+	};
+
+	cam_avdd_3v3: cam-avdd-3v3 {
+		compatible = "regulator-fixed";
+		regulator-name = "cam_avdd_3v3";
+		regulator-always-on;
+		regulator-boot-on;
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		vin-supply = <&vcc_cam1>;
+	};
+
+	cam_dvdd: cam-dvdd {
+		compatible = "regulator-fixed";
+		regulator-name = "cam_dvdd";
+		regulator-always-on;
+		regulator-boot-on;
+		regulator-min-microvolt = <1200000>;
+		regulator-max-microvolt = <1200000>;
+		vin-supply = <&vcc_cam1>;
+	};
+
+	/* 外部时钟定义 */
+	ext_cam_24m_clk: ext-cam-37m-clk {
+		compatible = "fixed-clock";
+		clock-frequency = <24000000>;
+		clock-output-names = "ext_cam_24m_clk";
+		#clock-cells = <0>;
+	};
 
 	wifi_usb: wifi-usb {
 		compatible = "regulator-fixed";
@@ -280,10 +329,10 @@
 };
 
 &i2c3 {
-    status = "okay";
-    clock-frequency = <400000>;
-    pinctrl-names = "default";
-    pinctrl-0 = <&i2c3m2_xfer>;
+	status = "okay";
+	clock-frequency = <400000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c3m2_xfer>;
 	#address-cells = <1>;
 	#size-cells = <0>;
 
@@ -293,13 +342,51 @@
 		reg = <0x21>;
 		gpio-controller;
 		#gpio-cells = <2>;
-		//  = <&gpio5 0 GPIO_ACTIVE_LOW>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_pca9535>;
 		interrupt-parent = <&gpio0>;
 		interrupts = <RK_PA3 GPIO_ACTIVE_LOW>;
 		interrupt-controller;
 		#interrupt-cells = <2>;
+	};
+
+	/* IMX385 传感器节点 - CAM1 接口 */
+	imx385: imx385@1a {
+		compatible = "sony,imx385";
+		status = "okay";
+		reg = <0x1a>;  /* 确认：这是工装唯一 ACK 的地址 */
+		clocks = <&ext_cam_24m_clk>;
+		clock-names = "xvclk";
+
+		/* 使用 GPIO 扩展器控制电源和复位 */
+		pwdn-gpios = <&gpio5 2 GPIO_ACTIVE_HIGH>;   /* P0_2: CAM1_PWDN */
+		reset-gpios = <&gpio5 3 GPIO_ACTIVE_HIGH>;   /* P0_3: CAM1_nRST */
+
+		/* 电源供应 */
+		dvdd-supply = <&cam_dvdd>;      /* 1.2V 数字电源 */
+		dovdd-supply = <&cam_dovdd>;    /* 1.8V IO 电源 */
+		avdd-supply = <&cam_avdd_3v3>;  /* 3.3V 模拟电源 */
+
+		/* Rockchip 相机模块属性 */
+		rockchip,camera-module-index = <1>;
+		rockchip,camera-module-facing = "back";
+		rockchip,camera-module-name = "IMX385-CAM1";
+		rockchip,camera-module-lens-name = "default";
+
+		port {
+			imx385_out: endpoint {
+				remote-endpoint = <&csi_dphy2_input>;
+				data-lanes = <1 2>;
+				/* 
+				 * 极性配置：<Clock Lane1 Lane2>
+				 * 0 = 正常极性，1 = 反转极性
+				 * 如果仍有 ECC2/CRC 错误，尝试其他组合：
+				 * <0 1 1>, <1 1 1>, <1 0 0>, <0 0 1>, <0 1 0>
+				 */
+				lane-polarities = <0 0 0>;
+				rockchip,settle-time-ns = <115>;
+			};
+		};
 	};
 };
 
@@ -484,6 +571,139 @@
 
 &vop {
 	status = "okay";
+};
+
+/* 禁用 I2C4 - 硬件设计缺陷 */
+&i2c4 {
+	status = "disabled";
+};
+
+/* CSI2 DPHY 硬件控制器 */
+&csi2_dphy_hw {
+	status = "okay";
+};
+
+/* MIPI CSI2 DPHY2 配置 - 连接 IMX385 */
+&csi2_dphy2 {
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <0>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			csi_dphy2_input: endpoint@0 {
+				reg = <0>;
+				remote-endpoint = <&imx385_out>;
+				data-lanes = <1 2>;
+			};
+		};
+
+		port@1 {
+			reg = <1>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			csi_dphy2_output: endpoint@0 {
+				reg = <0>;
+				remote-endpoint = <&mipi1_csi2_input>;
+			};
+		};
+	};
+};
+
+/* MIPI1 CSI2 接收器 - 用于 CAM RX1 */
+&mipi1_csi2 {
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <0>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* 从 DPHY2 接收数据 */
+			mipi1_csi2_input: endpoint@1 {
+				reg = <1>;
+				remote-endpoint = <&csi_dphy2_output>;
+			};
+		};
+
+		port@1 {
+			reg = <1>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* 输出到 RKCIF */
+			mipi1_csi2_output: endpoint@0 {
+				reg = <0>;
+				remote-endpoint = <&cif_mipi_in1>;
+			};
+		};
+	};
+};
+
+/* RKCIF (Camera Interface) */
+&rkcif {
+	status = "okay";
+};
+
+/* RKCIF MIPI LVDS1 接口 - 用于 CAM RX1 */
+&rkcif_mipi_lvds1 {
+	status = "okay";
+
+	port {
+		/* 从 MIPI1 CSI2 接收数据 */
+		cif_mipi_in1: endpoint {
+			remote-endpoint = <&mipi1_csi2_output>;
+			data-lanes = <1 2>;
+		};
+	};
+};
+
+/* RKCIF MIPI LVDS1 SDITF */
+&rkcif_mipi_lvds1_sditf {
+	status = "okay";
+
+	port {
+		/* 输出到 ISP */
+		mipi_lvds1_sditf: endpoint {
+			remote-endpoint = <&isp_in1>;
+		};
+	};
+};
+
+/* RKISP (Image Signal Processor) */
+&rkisp {
+	status = "okay";
+};
+
+/* RKISP 虚拟设备1 - 用于 CAM RX1 */
+&rkisp_vir1 {
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <0>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			isp_in1: endpoint@0 {
+				reg = <0>;
+				remote-endpoint = <&mipi_lvds1_sditf>;
+			};
+		};
+	};
 };
 
 &pinctrl {
