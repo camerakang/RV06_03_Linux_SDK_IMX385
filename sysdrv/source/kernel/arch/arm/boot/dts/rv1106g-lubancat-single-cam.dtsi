@@ -96,6 +96,18 @@
 				remote-endpoint = <&gc4653_out>;
 				data-lanes = <1 2>;
 			};
+
+			csi_dphy_input4: endpoint@4 {
+				reg = <4>;
+				remote-endpoint = <&gc2053_out>;
+				data-lanes = <1 2>;
+			};
+
+			csi_dphy_input5: endpoint@5 {
+				reg = <5>;
+				remote-endpoint = <&gc2093_out>;
+				data-lanes = <1 2>;
+			};
 		};
 
 		port@1 {
@@ -229,6 +241,59 @@
 		port {
 			gc4653_out: endpoint {
 				remote-endpoint = <&csi_dphy_input3>;
+				data-lanes = <1 2>;
+			};
+		};
+	};
+
+	gc2053: gc2053@37 {
+		compatible = "galaxycore,gc2053";
+		status = "okay";
+		reg = <0x37>;
+		clocks = <&ext_cam_24m_clk>;
+		clock-names = "xvclk";
+
+		avdd-supply = <&cam_avdd>;
+		dovdd-supply = <&cam_dovdd>;
+		dvdd-supply = <&cam_dvdd>;
+
+		pwdn-gpios = <&gpio5 0 GPIO_ACTIVE_LOW>;
+		reset-gpios = <&gpio5 1 GPIO_ACTIVE_LOW>;
+
+		rockchip,camera-module-index = <0>;
+		rockchip,camera-module-facing = "back";
+		rockchip,camera-module-name = "CMK-OT2274-V10";
+		rockchip,camera-module-lens-name = "28IRC-F20";
+		port {
+			gc2053_out: endpoint {
+				remote-endpoint = <&csi_dphy_input4>;
+				data-lanes = <1 2>;
+			};
+		};
+	};
+
+	gc2093: gc2093@37 {
+		compatible = "galaxycore,gc2093";
+		status = "okay";
+		reg = <0x37>;
+		clocks = <&ext_cam_24m_clk>;
+		clock-names = "xvclk";
+
+		avdd-supply = <&cam_avdd>;
+		dovdd-supply = <&cam_dovdd>;
+		dvdd-supply = <&cam_dvdd>;
+
+		pwdn-gpios = <&gpio5 0 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&gpio5 1 GPIO_ACTIVE_LOW>;
+
+		rockchip,camera-module-index = <0>;
+		rockchip,camera-module-facing = "back";
+		rockchip,camera-module-name = "SIDA209300461";
+		rockchip,camera-module-lens-name = "60IRC_F20";
+
+		port {
+			gc2093_out: endpoint {
+				remote-endpoint = <&csi_dphy_input5>;
 				data-lanes = <1 2>;
 			};
 		};
