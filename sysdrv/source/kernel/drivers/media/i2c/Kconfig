@@ -1961,6 +1961,17 @@ config VIDEO_SC035GS
 	  To compile this driver as a module, choose M here: the
 	  module will be called sc1035gs.
 
+config VIDEO_SC130GS
+	tristate "SmartSens SC130GS sensor support"
+	depends on I2C && VIDEO_V4L2 && VIDEO_V4L2_SUBDEV_API
+	depends on MEDIA_CAMERA_SUPPORT
+	select V4L2_FWNODE
+	help
+	  Support for the SmartSens SC130GS Global Shutter sensor.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called sc130gs.
+
 config VIDEO_SC132GS
 	tristate "SmartSens SC132GS sensor support"
 	depends on I2C && VIDEO_V4L2 && VIDEO_V4L2_SUBDEV_API

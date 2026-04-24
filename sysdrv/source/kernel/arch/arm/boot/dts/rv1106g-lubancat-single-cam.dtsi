@@ -17,6 +17,13 @@
 		#clock-cells = <0>;
 	};
 
+	ext_cam_27m_clk: external-camera-27m-clock {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <27000000>;
+		clock-output-names = "ext_cam_27m_clk";
+	};
+
 	vdd_cam_5v: vdd-cam-5v-regulator {
 		compatible = "regulator-fixed";
 		regulator-name = "vdd_cam_5v";
@@ -108,6 +115,12 @@
 				remote-endpoint = <&gc2093_out>;
 				data-lanes = <1 2>;
 			};
+
+			csi_dphy_input6: endpoint@6 {
+				reg = <6>;
+				remote-endpoint = <&sc130gs_out>;
+				data-lanes = <1 2 3 4>;
+			};
 		};
 
 		port@1 {
@@ -150,7 +163,7 @@
 		reg = <0x36>;
 		clocks = <&ext_cam_24m_clk>;
 		clock-names = "xvclk";
-		pwdn-gpios = <&gpio5 0 GPIO_ACTIVE_HIGH>;
+		pwdn-gpios = <&gpio5 0 GPIO_ACTIVE_LOW>;
 		reset-gpios = <&gpio5 1 GPIO_ACTIVE_HIGH>;
 
 		dovdd-supply= <&cam_dovdd>; /* 1.8v */
@@ -174,11 +187,11 @@
 
 	sc530ai: sc530ai@30 {
 		compatible = "smartsens,sc530ai";
-		status = "okay";
+		status = "disabled";
 		reg = <0x30>;
 		clocks = <&ext_cam_24m_clk>;
 		clock-names = "xvclk";
-		pwdn-gpios = <&gpio5 0 GPIO_ACTIVE_HIGH>;
+		pwdn-gpios = <&gpio5 0 GPIO_ACTIVE_LOW>;
 		reset-gpios = <&gpio5 1 GPIO_ACTIVE_HIGH>;
 		rockchip,camera-module-index = <0>;
 		rockchip,camera-module-facing = "back";
@@ -188,6 +201,26 @@
 			sc530ai_out: endpoint {
 				remote-endpoint = <&csi_dphy_input1>;
 				data-lanes = <1 2>;
+			};
+		};
+	};
+
+	sc130gs: sc130gs@30 {
+		compatible = "smartsens,sc130gs";
+		status = "okay";
+		reg = <0x30>;
+		clocks = <&ext_cam_27m_clk>;
+		clock-names = "xvclk";
+		pwdn-gpios = <&gpio5 0 GPIO_ACTIVE_LOW>;
+		reset-gpios = <&gpio5 1 GPIO_ACTIVE_HIGH>;
+		rockchip,camera-module-index = <0>;
+		rockchip,camera-module-facing = "back";
+		rockchip,camera-module-name = "sc130gs-module";
+		rockchip,camera-module-lens-name = "default";
+		port {
+			sc130gs_out: endpoint {
+				remote-endpoint = <&csi_dphy_input6>;
+				data-lanes = <1 2 3 4>;
 			};
 		};
 	};
@@ -228,7 +261,7 @@
 		avdd-supply = <&cam_avdd>;
 		dovdd-supply = <&cam_dovdd>;
 		dvdd-supply = <&cam_dvdd>;
-		pwdn-gpios = <&gpio5 0 GPIO_ACTIVE_HIGH>;
+		pwdn-gpios = <&gpio5 0 GPIO_ACTIVE_LOW>;
 		reset-gpios = <&gpio5 1 GPIO_ACTIVE_HIGH>;
 
 		rockchip,camera-module-index = <0>;
@@ -283,7 +316,7 @@
 		dovdd-supply = <&cam_dovdd>;
 		dvdd-supply = <&cam_dvdd>;
 
-		pwdn-gpios = <&gpio5 0 GPIO_ACTIVE_HIGH>;
+		pwdn-gpios = <&gpio5 0 GPIO_ACTIVE_LOW>;
 		reset-gpios = <&gpio5 1 GPIO_ACTIVE_LOW>;
 
 		rockchip,camera-module-index = <0>;
